@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BAMBOAI LLP NDA Agreement</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; background: #f9f9f9; }
+    h1 { text-align: center; }
+    .signature-form, .admin-panel { margin-top: 40px; padding: 20px; background: #fff; border: 1px solid #ccc; }
+    label { display: block; margin-top: 10px; }
+    input, button, canvas { padding: 8px; width: 100%; margin-top: 5px; box-sizing: border-box; }
+    canvas { border: 1px solid #aaa; display: block; margin-top: 5px; touch-action: none; }
+    .entry { border-bottom: 1px solid #ddd; padding: 10px 0; }
+    .checkbox-container { display: flex; align-items: center; gap: 10px; margin: 15px 0; }
+    .checkbox-container input[type="checkbox"] { width: auto; margin: 0; }
+    .checkbox-container label { margin: 0; font-size: 0.95rem; }
+    #clearSignature { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>BAMBOAI LLP – NDA & Non-Compete Agreement</h1>
+  <div id="agreement-text">
+    <label for="effectiveDate"><strong>Effective Date:</strong></label>
+<input type="date" id="effectiveDate" name="effectiveDate" required />
+    <p><strong>Parties:</strong> This Agreement is entered into by and between <strong>BAMBOAI LLP</strong> (“the Company”) and <em>the Recipient</em>.</p>
+    <br /><br />
+<h3>1. Confidential Information</h3>
+<p><strong>1.1 Definition:</strong> Confidential Information includes, but is not limited to: client acquisition systems and strategies, sales processes, workflows, scripts, automations, business development infrastructure, client data, internal documents, templates, and SOPs, and any other intellectual property developed or used by BAMBOAI LLP.</p>
+<p><strong>1.2 Obligations of Confidentiality:</strong> The Recipient agrees not to disclose, share, distribute, or reproduce any Confidential Information to any third party, during or after engagement with BAMBOAI LLP, and to use the Confidential Information solely for the purposes of performing duties for BAMBOAI LLP.</p>
+
+<h3>2. Intellectual Property Ownership</h3>
+<p>All systems, materials, and strategies developed by or provided by BAMBOAI LLP during the course of employment or engagement remain the sole property of BAMBOAI LLP. The Recipient has no claim to ownership or license unless explicitly granted in writing.</p>
+
+<h3>3. Non-Use & Non-Solicitation</h3>
+<p>The Recipient agrees not to use BAMBOAI LLP’s systems, tools, or processes for personal benefit or to assist any competing business during the term of their engagement. The Recipient further agrees not to resell, repurpose, or replicate any part of BAMBOAI LLP’s acquisition infrastructure for any third party, agency, or client, and not to solicit BAMBOAI LLP clients or staff for a period of 12 months after the termination of the engagement.</p>
+
+<h3>4. Post-Termination Restrictions</h3>
+<p>Upon termination or cessation of engagement, all access to internal systems and data must be surrendered. The Recipient may not use any internal BAMBOAI LLP system, playbook, or infrastructure in any form. Any continued use, replication, or redistribution of said materials is strictly prohibited.</p>
+
+<h3>5. Remedies & Enforcement</h3>
+<p>Any breach of this Agreement will entitle BAMBOAI LLP to seek injunctive relief, pursue compensatory damages, and recover all legal and enforcement costs.</p>
+
+<h3>6. Term & Jurisdiction</h3>
+<p>This Agreement shall survive indefinitely beyond the termination date of the engagement. It is governed under the laws of England & Wales.</p>
+
+<h3>7. Acknowledgment</h3>
+<p>By signing below, the Recipient acknowledges that they have read and understood the terms of this Agreement and agree to abide by all restrictions stated herein.</p>
+  </div>
+
+  <div class="signature-form">
+    <h2>Sign the Agreement</h2>
+    <form id="signForm">
+      <label for="recipientName">Your Full Legal Name:</label>
+      <input type="text" id="recipientName" required />
+
+      <label for="recipientEmail">Email Address:</label>
+      <input type="email" id="recipientEmail" required />
+
+      <div class="checkbox-container">
+        <input type="checkbox" id="agreeCheck" required />
+        <label for="agreeCheck">I agree to be legally bound by this agreement.</label>
+      </div>
+
+      <label for="signDate">Date:</label>
+      <input type="date" id="signDate" required />
+
+      <label for="signatureCanvas">Draw Your Signature:</label>
+      <canvas id="signatureCanvas" width="600" height="150"></canvas>
+      <button type="button" id="clearSignature">Clear Signature</button>
+
+      <button type="submit">Submit Signature</button>
+    </form>
+    <p id="submitMsg"></p>
+  </div>
+
+  <div class="admin-panel">
+    <h2>Admin Login</h2>
+    <form id="adminLoginForm">
+      <label for="adminPass">Enter Admin Password:</label>
+      <input type="password" id="adminPass" />
+      <button type="submit">Login</button>
+    </form>
+
+    <div id="adminView" style="display:none;">
+      <h3>Signed Submissions</h3>
+      <button id="exportCsv">Export as CSV</button>
+      <button id="exportPdf">Export as PDF</button>
+      <div id="entries"></div>
+    </div>
+  </div>
+
+  <script>
+    const password = "BoboDusky08:";
+    const canvas = document.getElementById('signatureCanvas');
+    const ctx = canvas.getContext('2d');
+    const clearBtn = document.getElementById('clearSignature');
+    const signForm = document.getElementById('signForm');
+    const submitMsg = document.getElementById('submitMsg');
+    const entriesDiv = document.getElementById('entries');
+    const adminView = document.getElementById('adminView');
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    const adminPassInput = document.getElementById('adminPass');
+    const storageKey = 'bamboai_signatures';
+
+    let drawing = false;
+    let prevX = 0;
+    let prevY = 0;
+
+    function getMousePos(canvas, evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener('mousedown', function(evt) {
+      drawing = true;
+      const pos = getMousePos(canvas, evt);
+      prevX = pos.x;
+      prevY = pos.y;
+    });
+
+    canvas.addEventListener('mousemove', function(evt) {
+      if (!drawing) return;
+      const pos = getMousePos(canvas, evt);
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.closePath();
+      prevX = pos.x;
+      prevY = pos.y;
+    });
+
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseout', () => drawing = false);
+
+    clearBtn.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    window.onload = () => {
+      document.getElementById("date").textContent = new Date().toLocaleDateString();
+    };
+
+    signForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const name = document.getElementById('recipientName').value;
+      const email = document.getElementById('recipientEmail').value;
+      const date = document.getElementById('signDate').value;
+      const signatureData = canvas.toDataURL();
+      const timestamp = new Date().toISOString();
+
+      let signatures = JSON.parse(localStorage.getItem(storageKey)) || [];
+      signatures.push({ name, email, date, signatureData, timestamp });
+      localStorage.setItem(storageKey, JSON.stringify(signatures));
+
+      submitMsg.innerText = '✅ Successfully signed the agreement!';
+      signForm.reset();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    adminLoginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (adminPassInput.value === password) {
+        adminView.style.display = 'block';
+        loadSignatures();
+      } else {
+        alert('Incorrect password.');
+      }
+    });
+
+    function loadSignatures() {
+      const data = JSON.parse(localStorage.getItem(storageKey)) || [];
+      if (data.length === 0) {
+        entriesDiv.innerHTML = '<p>No one has signed yet.</p>';
+      } else {
+        entriesDiv.innerHTML = data.map((e, i) => `
+          <div class="entry">
+            <strong>Name:</strong> ${e.name} <br />
+            <strong>Email:</strong> ${e.email} <br />
+            <strong>Date:</strong> ${e.date} <br />
+            <strong>Timestamp:</strong> ${e.timestamp} <br />
+            <img src="${e.signatureData}" alt="Signature ${i}" height="60" />
+          </div>`).join('');
+      }
+    }
+
+    document.getElementById('exportCsv').addEventListener('click', () => {
+      const data = JSON.parse(localStorage.getItem(storageKey)) || [];
+      let csvContent = "Name,Email,Date,Timestamp,SignatureDataURL\n" +
+        data.map(e => `${e.name},${e.email},${e.date},${e.timestamp},${e.signatureData}`).join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bamboai_signatures.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    document.getElementById('exportPdf').addEventListener('click', async () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const data = JSON.parse(localStorage.getItem(storageKey)) || [];
+
+      if (data.length === 0) return alert('No signatures to export.');
+
+      let y = 10;
+      doc.setFontSize(12);
+      for (let index = 0; index < data.length; index++) {
+        const entry = data[index];
+        doc.text(`Signature #${index + 1}`, 10, y);
+        y += 8;
+        doc.text(`Name: ${entry.name}`, 10, y); y += 8;
+        doc.text(`Email: ${entry.email}`, 10, y); y += 8;
+        doc.text(`Date Signed: ${entry.date}`, 10, y); y += 8;
+        doc.text(`Timestamp: ${entry.timestamp}`, 10, y); y += 8;
+
+        if (entry.signatureData) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          doc.addImage(entry.signatureData, 'PNG', 10, y, 80, 30);
+          y += 40;
+        }
+
+        if (y > 270) {
+          doc.addPage();
+          y = 10;
+        }
+      }
+
+      doc.save('bamboai_signed_agreements.pdf');
+    });
+  </script>
+</body>
+</html>
